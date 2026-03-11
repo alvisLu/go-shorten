@@ -12,6 +12,14 @@
 # Go build cache
 /vendor/
 
+# Air (hot reload)
+/tmp/
+build-errors.log
+
+# Test coverage
+*.out
+coverage.html
+
 # IDE
 .vscode/
 .idea/
