@@ -9,6 +9,7 @@ import (
 func main() {
 	config := config.LoadConfig()
 
+	gin.SetMode(config.GIN_MODE)
 	gin := gin.New()
 	gin.SetTrustedProxies(nil)
 
