@@ -1,0 +1,22 @@
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  GOOSE: go run github.com/pressly/goose/v3/cmd/goose
+
+tasks:
+  dev:
+    cmd: air
+
+  migrate:up:
+    cmd: "{{.GOOSE}} -dir migrations postgres \"{{.DATABASE_URL}}\" up"
+
+  migrate:down:
+    cmd: "{{.GOOSE}} -dir migrations postgres \"{{.DATABASE_URL}}\" down"
+
+  migrate:status:
+    cmd: "{{.GOOSE}} -dir migrations postgres \"{{.DATABASE_URL}}\" status"
+
+  migrate:create:
+    cmd: "{{.GOOSE}} -dir migrations create {{.name}} sql"

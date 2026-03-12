@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	HOST     string
-	PORT     string
-	GIN_MODE string
+	HOST        string
+	PORT        string
+	GIN_MODE    string
+	DatabaseURL string
 }
 
 func LoadConfig() *Config {
@@ -21,8 +22,9 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		HOST:     os.Getenv("HOST"),
-		PORT:     os.Getenv("PORT"),
-		GIN_MODE: os.Getenv("GIN_MODE"),
+		HOST:        os.Getenv("HOST"),
+		PORT:        os.Getenv("PORT"),
+		GIN_MODE:    os.Getenv("GIN_MODE"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
 }

@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/alvisLu/go-short/internal/service"
+	"github.com/alvisLu/go-shorten/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
