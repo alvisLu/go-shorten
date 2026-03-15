@@ -1,28 +1,31 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	HOST     string
-	PORT     string
-	GIN_MODE string
+	HOST        string
+	PORT        string
+	GIN_MODE    string
+	DatabaseURL string
 }
 
 func LoadConfig() *Config {
+	godotenv.Load()
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	cfg := &Config{
+		HOST:        os.Getenv("HOST"),
+		PORT:        os.Getenv("PORT"),
+		GIN_MODE:    os.Getenv("GIN_MODE"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
 
-	return &Config{
-		HOST:     os.Getenv("HOST"),
-		PORT:     os.Getenv("PORT"),
-		GIN_MODE: os.Getenv("GIN_MODE"),
+	if cfg.DatabaseURL == "" {
+		panic("DATABASE_URL is required")
 	}
+
+	return cfg
 }

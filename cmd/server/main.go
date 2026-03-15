@@ -1,19 +1,27 @@
 package main
 
 import (
-	"github.com/alvisLu/go-short/api/router"
-	"github.com/alvisLu/go-short/internal/config"
+	"github.com/alvisLu/go-shorten/api/router"
+	"github.com/alvisLu/go-shorten/internal/config"
+	"github.com/alvisLu/go-shorten/internal/db"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	config := config.LoadConfig()
+	cfg := config.LoadConfig()
 
-	gin.SetMode(config.GIN_MODE)
+	database, err := db.NewDB(cfg.DatabaseURL)
+	if err != nil {
+		panic("failed to connect database: " + err.Error())
+	}
+
+	gin.SetMode(cfg.GIN_MODE)
 	gin := gin.New()
 	gin.SetTrustedProxies(nil)
 
-	router.Start(gin)
+	router.Start(database, gin)
 
-	gin.Run(config.HOST + ":" + config.PORT)
+	if err := gin.Run(cfg.HOST + ":" + cfg.PORT); err != nil {
+		panic("failed to start server: " + err.Error())
+	}
 }
