@@ -12,7 +12,7 @@ func main() {
 
 	database, err := db.NewDB(cfg.DatabaseURL)
 	if err != nil {
-		panic("failed to connect database")
+		panic("failed to connect database: " + err.Error())
 	}
 
 	gin.SetMode(cfg.GIN_MODE)
@@ -21,5 +21,7 @@ func main() {
 
 	router.Start(database, gin)
 
-	gin.Run(cfg.HOST + ":" + cfg.PORT)
+	if err := gin.Run(cfg.HOST + ":" + cfg.PORT); err != nil {
+		panic("failed to start server: " + err.Error())
+	}
 }
