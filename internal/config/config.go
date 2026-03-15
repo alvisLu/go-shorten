@@ -14,13 +14,18 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-
 	godotenv.Load()
 
-	return &Config{
+	cfg := &Config{
 		HOST:        os.Getenv("HOST"),
 		PORT:        os.Getenv("PORT"),
 		GIN_MODE:    os.Getenv("GIN_MODE"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}
+
+	if cfg.DatabaseURL == "" {
+		panic("DATABASE_URL is required")
+	}
+
+	return cfg
 }
