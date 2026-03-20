@@ -12,5 +12,5 @@ func registerUrlRoutes(db *gorm.DB, r *gin.Engine) {
 	h := shorturl.NewHandler(svc)
 
 	r.POST("/shorten", h.CreateShortUrl)
-	r.GET("/:code", h.GetOriginalURL)
+	r.GET("/shorten/:code", h.GetOriginalURL)
 }
