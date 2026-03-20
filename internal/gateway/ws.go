@@ -45,7 +45,7 @@ func newWsDispatcher(svc ws.WsService) wsDispatcher {
 
 // readPump reads messages from the client and dispatches them to the send channel.
 // It also handles pong messages to reset the read deadline.
-func readPump(conn *websocket.Conn, dispatch wsDispatcher, send chan<- any, done chan<- struct{}) {
+func readPump(conn *websocket.Conn, dispatch wsDispatcher, send chan<- any, done chan<- struct{}, quit <-chan struct{}) {
 	defer close(done)
 
 	conn.SetReadLimit(readLimit)
@@ -72,14 +72,22 @@ func readPump(conn *websocket.Conn, dispatch wsDispatcher, send chan<- any, done
 			if err != nil {
 				break
 			}
-			send <- resp
+			select {
+			case send <- resp:
+			case <-quit:
+				return
+			}
 		}
 	}
 }
 
 // writePump writes messages from the send channel to the client.
 // It sends periodic pings to keep the connection alive.
-func writePump(conn *websocket.Conn, send <-chan any, done <-chan struct{}) {
+// It closes quit and conn on exit to unblock readPump.
+func writePump(conn *websocket.Conn, send <-chan any, done <-chan struct{}, quit chan struct{}) {
+	defer close(quit)
+	defer conn.Close()
+
 	ticker := time.NewTicker(pingInterval)
 	defer ticker.Stop()
 
@@ -108,13 +116,13 @@ func wsHandler(upgrader websocket.Upgrader) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		defer conn.Close()
 
 		send := make(chan any, 8)
 		done := make(chan struct{})
+		quit := make(chan struct{})
 
-		go readPump(conn, newWsDispatcher(ws.NewService()), send, done)
-		writePump(conn, send, done)
+		go readPump(conn, newWsDispatcher(ws.NewService()), send, done, quit)
+		writePump(conn, send, done, quit)
 	}
 }
 
