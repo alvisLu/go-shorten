@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"cmp"
+
 	"github.com/alvisLu/go-shorten/internal/config"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -12,7 +14,8 @@ type Server struct {
 }
 
 func NewHttpServer(cfg *config.Config, db *gorm.DB) *Server {
-	gin.SetMode(cfg.GIN_MODE)
+	mode := cmp.Or(cfg.GIN_MODE, gin.DebugMode)
+	gin.SetMode(mode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.SetTrustedProxies(nil)
