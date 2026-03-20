@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"github.com/alvisLu/go-shorten/internal/health"
@@ -6,15 +6,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func Start(db *gorm.DB, gin *gin.Engine) {
-	publicRouter := gin.Group("")
-	NewHealthRoute(publicRouter)
-	NewUrlRoute(db, publicRouter)
-}
-
-func NewHealthRoute(gin *gin.RouterGroup) {
+func registerRoutes(db *gorm.DB, r *gin.Engine) {
 	svc := health.NewService()
 	h := health.NewHandler(svc)
+	r.GET("/", h.Health)
 
-	gin.GET("/", h.Health)
+	registerUrlRoutes(db, r)
+
+	// ws
+	registerWsRoutes(r)
 }
