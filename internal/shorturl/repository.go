@@ -1,29 +1,26 @@
-package repository
+package shorturl
 
-import (
-	"github.com/alvisLu/go-shorten/internal/model"
-	"gorm.io/gorm"
-)
+import "gorm.io/gorm"
 
-type URLRepository interface {
-	Create(url *model.URL) error
-	GetURLByCode(code string) (*model.URL, error)
+type Repository interface {
+	Create(url *URL) error
+	GetURLByCode(code string) (*URL, error)
 }
 
-type URLRepositoryImpl struct {
+type repositoryImpl struct {
 	db *gorm.DB
 }
 
-func NewURLRepository(db *gorm.DB) *URLRepositoryImpl {
-	return &URLRepositoryImpl{db: db}
+func NewRepository(db *gorm.DB) *repositoryImpl {
+	return &repositoryImpl{db: db}
 }
 
-func (r *URLRepositoryImpl) Create(url *model.URL) error {
+func (r *repositoryImpl) Create(url *URL) error {
 	return r.db.Create(url).Error
 }
 
-func (r *URLRepositoryImpl) GetURLByCode(code string) (*model.URL, error) {
-	var url model.URL
+func (r *repositoryImpl) GetURLByCode(code string) (*URL, error) {
+	var url URL
 	if err := r.db.Where("code = ?", code).First(&url).Error; err != nil {
 		return nil, err
 	}

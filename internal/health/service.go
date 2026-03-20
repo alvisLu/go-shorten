@@ -1,16 +1,15 @@
-package service
+package health
 
 type Service interface {
 	Health() string
 }
 
-type ServiceImpl struct {
+type serviceImpl struct{}
+
+func NewService() *serviceImpl {
+	return &serviceImpl{}
 }
 
-func NewService() *ServiceImpl {
-	return &ServiceImpl{}
-}
-
-func (s *ServiceImpl) Health() string {
+func (s *serviceImpl) Health() string {
 	return "Hello, World!"
 }

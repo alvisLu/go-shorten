@@ -1,17 +1,16 @@
-package handler
+package health
 
 import (
 	"net/http"
 
-	"github.com/alvisLu/go-shorten/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	service service.Service
+	service Service
 }
 
-func NewHandler(s service.Service) *Handler {
+func NewHandler(s Service) *Handler {
 	return &Handler{service: s}
 }
 

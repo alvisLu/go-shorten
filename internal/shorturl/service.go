@@ -1,33 +1,27 @@
-package service
+package shorturl
 
-import (
-	"github.com/alvisLu/go-shorten/internal/repository"
-)
-
-type URLService interface {
+type Service interface {
 	CreateShortURL(longURL string) (string, error)
-	GetOriginalURL(shortURL string) (string, error)
+	GetOriginalURL(code string) (string, error)
 }
 
-type URLServiceImpl struct {
-	repository repository.URLRepository
+type serviceImpl struct {
+	repository Repository
 }
 
-func NewURLService(repo repository.URLRepository) *URLServiceImpl {
-	return &URLServiceImpl{repository: repo}
+func NewService(repo Repository) *serviceImpl {
+	return &serviceImpl{repository: repo}
 }
 
-func (s *URLServiceImpl) CreateShortURL(longURL string) (string, error) {
+func (s *serviceImpl) CreateShortURL(longURL string) (string, error) {
 	url := "url"
 	return url, nil
 }
 
-func (s *URLServiceImpl) GetOriginalURL(code string) (string, error) {
-
+func (s *serviceImpl) GetOriginalURL(code string) (string, error) {
 	url, err := s.repository.GetURLByCode(code)
 	if err != nil {
 		return "", err
 	}
-
 	return url.OriginalURL, nil
 }
