@@ -1,4 +1,4 @@
-package router
+package gateway
 
 import (
 	"github.com/alvisLu/go-shorten/internal/shorturl"
@@ -6,11 +6,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewUrlRoute(db *gorm.DB, gin *gin.RouterGroup) {
+func registerUrlRoutes(db *gorm.DB, r *gin.Engine) {
 	repo := shorturl.NewRepository(db)
 	svc := shorturl.NewService(repo)
 	h := shorturl.NewHandler(svc)
 
-	gin.POST("/shorten", h.CreateShortUrl)
-	gin.GET("/:code", h.GetOriginalURL)
+	r.POST("/shorten", h.CreateShortUrl)
+	r.GET("/shorten/:code", h.GetOriginalURL)
 }
