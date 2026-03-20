@@ -17,7 +17,7 @@ func NewHttpServer(cfg *config.Config, db *gorm.DB) *Server {
 	r.Use(gin.Logger(), gin.Recovery())
 	r.SetTrustedProxies(nil)
 
-	registerRoutes(db, r)
+	registerRoutes(cfg, db, r)
 
 	return &Server{router: r, cfg: cfg}
 }
