@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/alvisLu/go-shorten/internal/config"
-	"github.com/alvisLu/go-shorten/internal/ws"
+	"github.com/alvisLu/go-shorten/internal/session"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
 const (
-	readLimit    = 512
 	pongWait     = 60 * time.Second
 	pingInterval = 45 * time.Second
 	writeWait    = 10 * time.Second
@@ -35,20 +34,40 @@ func newUpgrader(cfg *config.Config) websocket.Upgrader {
 	}
 }
 
-type wsDispatcher map[string]func() (any, error)
+type controlMsg struct {
+	Type       string `json:"type"`
+	SourceLang string `json:"sourceLang"`
+	TargetLang string `json:"targetLang"`
+	SampleRate int    `json:"sampleRate"`
+}
 
-func newWsDispatcher(svc ws.WsService) wsDispatcher {
-	return wsDispatcher{
-		"health": func() (any, error) { return svc.WsHealth(), nil },
+func handleControl(sess *session.Session, raw []byte) {
+	var msg controlMsg
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		return
+	}
+	switch msg.Type {
+	case "start":
+		sess.Start(msg.SourceLang, msg.TargetLang, msg.SampleRate)
+	case "stop":
+		sess.Stop()
+	case "health":
+		sess.Health()
+	default:
+		sess.Send(session.WsErrorResp{Error: "unknown control type"})
 	}
 }
 
-// readPump reads messages from the client and dispatches them to the send channel.
+func handleAudio(sess *session.Session, data []byte) {
+	// Phase 5: parse binary frame and dispatch to ChannelState
+	// [isFinal: 1 byte][channel: 1 byte][id: 21 bytes][PCM: N bytes Float32LE]
+}
+
+// readPump reads messages from the client and dispatches them.
 // It also handles pong messages to reset the read deadline.
-func readPump(conn *websocket.Conn, dispatch wsDispatcher, send chan<- any, done chan<- struct{}, quit <-chan struct{}) {
+func readPump(conn *websocket.Conn, sess *session.Session, done chan<- struct{}, quit <-chan struct{}) {
 	defer close(done)
 
-	conn.SetReadLimit(readLimit)
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error {
 		conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -56,27 +75,17 @@ func readPump(conn *websocket.Conn, dispatch wsDispatcher, send chan<- any, done
 	})
 
 	for {
-		_, data, err := conn.ReadMessage()
+		msgType, data, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
 		conn.SetReadDeadline(time.Now().Add(pongWait))
 
-		var msg ws.WsReq
-		if err := json.Unmarshal(data, &msg); err != nil {
-			break
-		}
-
-		if handler, ok := dispatch[msg.Type]; ok {
-			resp, err := handler()
-			if err != nil {
-				break
-			}
-			select {
-			case send <- resp:
-			case <-quit:
-				return
-			}
+		switch msgType {
+		case websocket.BinaryMessage:
+			go handleAudio(sess, data)
+		case websocket.TextMessage:
+			go handleControl(sess, data)
 		}
 	}
 }
@@ -121,7 +130,9 @@ func wsHandler(upgrader websocket.Upgrader) gin.HandlerFunc {
 		done := make(chan struct{})
 		quit := make(chan struct{})
 
-		go readPump(conn, newWsDispatcher(ws.NewService()), send, done, quit)
+		sess := session.NewSession(send)
+
+		go readPump(conn, sess, done, quit)
 		writePump(conn, send, done, quit)
 	}
 }
