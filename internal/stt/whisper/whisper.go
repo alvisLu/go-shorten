@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"strings"
 	"sync"
 
@@ -84,7 +85,7 @@ func Resample(input []float32, fromRate int) []float32 {
 		return input
 	}
 	ratio := float64(fromRate) / 16000.0
-	length := int(float64(len(input)) / ratio)
+	length := int(math.Ceil(float64(len(input)) / ratio))
 	output := make([]float32, length)
 	for i := range output {
 		pos := float64(i) * ratio
