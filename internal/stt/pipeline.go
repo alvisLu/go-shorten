@@ -2,6 +2,7 @@ package stt
 
 import (
 	"context"
+	"encoding/binary"
 	"log"
 	"math"
 	"time"
@@ -116,11 +117,29 @@ func (p *Pipeline) transcribeSegment(sess *session.Session, chName string, pf se
 		rate = 48000
 	}
 	resampled := whisper.Resample(pf.Data, rate)
+	if sess.Denoise() {
+		sess.Send(audioFrame(chName, pf.ID, resampled))
+	}
 	text, err := p.w.Transcribe(resampled, sess.SourceLang())
 	if err != nil || text == "" {
 		return
 	}
 	sess.Send(TranscriptMsg{Type: "transcript", Channel: chName, ID: pf.ID, Text: text, Final: true})
+}
+
+// audioFrame encodes resampled 16kHz PCM as a binary WebSocket frame.
+// Frame layout: [0xDA][channel][id: 21 bytes][Float32LE PCM bytes]
+func audioFrame(chName, id string, pcm []float32) []byte {
+	buf := make([]byte, 23+len(pcm)*4)
+	buf[0] = 0xDA
+	if chName == "loopback" {
+		buf[1] = 1
+	}
+	copy(buf[2:23], id)
+	for i, v := range pcm {
+		binary.LittleEndian.PutUint32(buf[23+i*4:], math.Float32bits(v))
+	}
+	return buf
 }
 
 func (p *Pipeline) runPendingFinal(sess *session.Session, chName string) {

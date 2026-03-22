@@ -44,6 +44,7 @@ type controlMsg struct {
 	SourceLang string `json:"sourceLang"`
 	TargetLang string `json:"targetLang"`
 	SampleRate int    `json:"sampleRate"`
+	Denoise    bool   `json:"denoise"`
 }
 
 func handleControl(sess *session.Session, raw []byte) {
@@ -53,7 +54,7 @@ func handleControl(sess *session.Session, raw []byte) {
 	}
 	switch msg.Type {
 	case "start":
-		sess.Start(msg.SourceLang, msg.TargetLang, msg.SampleRate)
+		sess.Start(msg.SourceLang, msg.TargetLang, msg.SampleRate, msg.Denoise)
 	case "stop":
 		sess.Stop()
 	case "health":
@@ -140,8 +141,14 @@ func writePump(conn *websocket.Conn, send <-chan any, done <-chan struct{}, quit
 		select {
 		case msg := <-send:
 			conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := conn.WriteJSON(msg); err != nil {
-				return
+			if raw, ok := msg.([]byte); ok {
+				if err := conn.WriteMessage(websocket.BinaryMessage, raw); err != nil {
+					return
+				}
+			} else {
+				if err := conn.WriteJSON(msg); err != nil {
+					return
+				}
 			}
 		case <-ticker.C: // send ping
 			conn.SetWriteDeadline(time.Now().Add(writeWait))

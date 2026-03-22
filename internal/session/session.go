@@ -12,6 +12,7 @@ type Session struct {
 	sourceLang string
 	targetLang string
 	sampleRate int
+	denoise    bool
 }
 
 func NewSession(send chan<- any) *Session {
@@ -40,12 +41,13 @@ func (s *Session) Health() {
 	s.Send(WsResp{Status: "ok"})
 }
 
-func (s *Session) Start(sourceLang, targetLang string, sampleRate int) {
+func (s *Session) Start(sourceLang, targetLang string, sampleRate int, denoise bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sourceLang = sourceLang
 	s.targetLang = targetLang
 	s.sampleRate = sampleRate
+	s.denoise = denoise
 	s.running = true
 	s.Send(WsResp{Status: "started"})
 }
@@ -80,4 +82,10 @@ func (s *Session) SampleRate() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.sampleRate
+}
+
+func (s *Session) Denoise() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.denoise
 }
