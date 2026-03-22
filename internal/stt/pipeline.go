@@ -3,6 +3,7 @@ package stt
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"math"
 	"time"
@@ -119,7 +120,12 @@ func (p *Pipeline) transcribeSegment(sess *session.Session, chName string, pf se
 	}
 	resampled := whisper.Resample(pf.Data, rate)
 	if sess.IsEnableDenoise() {
-		sess.Send(audioFrame(chName, pf.ID, resampled))
+		frame, err := audioFrame(chName, pf.ID, resampled)
+		if err != nil {
+			log.Printf("transcribeSegment error: %v", err)
+			return
+		}
+		sess.Send(frame)
 	}
 	text, err := p.w.Transcribe(resampled, sess.SourceLang())
 	if err != nil || text == "" {
@@ -130,7 +136,11 @@ func (p *Pipeline) transcribeSegment(sess *session.Session, chName string, pf se
 
 // audioFrame encodes resampled 16kHz PCM as a binary WebSocket frame.
 // Frame layout: [0xDA][channel][id: 21 bytes][Float32LE PCM bytes]
-func audioFrame(chName, id string, pcm []float32) []byte {
+// id must be at most 21 bytes; longer values return an error.
+func audioFrame(chName, id string, pcm []float32) ([]byte, error) {
+	if len(id) > 21 {
+		return nil, fmt.Errorf("audioFrame id exceeds 21 bytes")
+	}
 	buf := make([]byte, 23+len(pcm)*4)
 	buf[0] = 0xDA
 	if chName == "loopback" {
@@ -140,7 +150,7 @@ func audioFrame(chName, id string, pcm []float32) []byte {
 	for i, v := range pcm {
 		binary.LittleEndian.PutUint32(buf[23+i*4:], math.Float32bits(v))
 	}
-	return buf
+	return buf, nil
 }
 
 func (p *Pipeline) runPendingFinal(sess *session.Session, chName string) {
