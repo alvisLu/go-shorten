@@ -5,14 +5,14 @@ import (
 )
 
 type Session struct {
-	mu         sync.RWMutex
-	send       chan<- any
-	channels   map[string]*ChannelState
-	running    bool
-	sourceLang string
-	targetLang string
-	sampleRate int
-	denoise    bool
+	mu            sync.RWMutex
+	send          chan<- any
+	channels      map[string]*ChannelState
+	isRunning     bool
+	sourceLang    string
+	targetLang    string
+	sampleRate    int
+	enableDenoise bool
 }
 
 func NewSession(send chan<- any) *Session {
@@ -41,21 +41,21 @@ func (s *Session) Health() {
 	s.Send(WsResp{Status: "ok"})
 }
 
-func (s *Session) Start(sourceLang, targetLang string, sampleRate int, denoise bool) {
+func (s *Session) Start(sourceLang, targetLang string, sampleRate int, enableDenoise bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sourceLang = sourceLang
 	s.targetLang = targetLang
 	s.sampleRate = sampleRate
-	s.denoise = denoise
-	s.running = true
+	s.enableDenoise = enableDenoise
+	s.isRunning = true
 	s.Send(WsResp{Status: "started"})
 }
 
 func (s *Session) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.running = false
+	s.isRunning = false
 	for _, ch := range s.channels {
 		ch.reset()
 	}
@@ -65,7 +65,7 @@ func (s *Session) Stop() {
 func (s *Session) IsRunning() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.running
+	return s.isRunning
 }
 
 func (s *Session) Channel(name string) *ChannelState {
@@ -84,8 +84,8 @@ func (s *Session) SampleRate() int {
 	return s.sampleRate
 }
 
-func (s *Session) Denoise() bool {
+func (s *Session) IsEnableDenoise() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.denoise
+	return s.enableDenoise
 }

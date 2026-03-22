@@ -40,11 +40,11 @@ func newUpgrader(cfg *config.Config) websocket.Upgrader {
 }
 
 type controlMsg struct {
-	Type       string `json:"type"`
-	SourceLang string `json:"sourceLang"`
-	TargetLang string `json:"targetLang"`
-	SampleRate int    `json:"sampleRate"`
-	Denoise    bool   `json:"denoise"`
+	Type          string `json:"type"`
+	SourceLang    string `json:"sourceLang"`
+	TargetLang    string `json:"targetLang"`
+	SampleRate    int    `json:"sampleRate"`
+	EnableDenoise bool   `json:"enableDenoise"`
 }
 
 func handleControl(sess *session.Session, raw []byte) {
@@ -54,7 +54,7 @@ func handleControl(sess *session.Session, raw []byte) {
 	}
 	switch msg.Type {
 	case "start":
-		sess.Start(msg.SourceLang, msg.TargetLang, msg.SampleRate, msg.Denoise)
+		sess.Start(msg.SourceLang, msg.TargetLang, msg.SampleRate, msg.EnableDenoise)
 	case "stop":
 		sess.Stop()
 	case "health":

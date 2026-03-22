@@ -61,6 +61,7 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 		ch.Unlock()
 		p.transcribeInterim(sess, chName, id, flattenPCM(snapshot))
 		ch.Lock()
+
 		ch.Processing = false
 		ch.Unlock()
 		p.runPendingFinal(sess, chName)
@@ -117,7 +118,9 @@ func (p *Pipeline) transcribeSegment(sess *session.Session, chName string, pf se
 		rate = 48000
 	}
 	resampled := whisper.Resample(pf.Data, rate)
-	if sess.Denoise() {
+	log.Printf("is denoising enabled? %v", sess.IsEnableDenoise())
+	if sess.IsEnableDenoise() {
+		log.Printf("denoising segment: ch=%s id=%s", chName, pf.ID)
 		sess.Send(audioFrame(chName, pf.ID, resampled))
 	}
 	text, err := p.w.Transcribe(resampled, sess.SourceLang())
