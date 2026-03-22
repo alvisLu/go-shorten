@@ -25,3 +25,6 @@ coverage.html
 .idea/
 *.swp
 *.swo
+
+
+whisper-models/

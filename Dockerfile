@@ -26,9 +26,11 @@ RUN CGO_ENABLED=1 GOOS=linux \
 # Stage 2: Final image
 FROM alpine:3
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates curl
 COPY --from=builder /app/server /server
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8080
 
-ENTRYPOINT ["/server"]
+ENTRYPOINT ["/entrypoint.sh"]
