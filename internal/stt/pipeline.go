@@ -58,9 +58,11 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 			ch.Unlock()
 			return
 		}
+
+		currentId := ch.CurrentSegID
 		ch.Processing = true
 		ch.Unlock()
-		p.transcribeInterim(sess, chName, id, flattenPCM(snapshot))
+		p.transcribeInterim(sess, chName, currentId, flattenPCM(snapshot))
 		ch.Lock()
 
 		ch.Processing = false
