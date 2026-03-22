@@ -118,9 +118,7 @@ func (p *Pipeline) transcribeSegment(sess *session.Session, chName string, pf se
 		rate = 48000
 	}
 	resampled := whisper.Resample(pf.Data, rate)
-	log.Printf("is denoising enabled? %v", sess.IsEnableDenoise())
 	if sess.IsEnableDenoise() {
-		log.Printf("denoising segment: ch=%s id=%s", chName, pf.ID)
 		sess.Send(audioFrame(chName, pf.ID, resampled))
 	}
 	text, err := p.w.Transcribe(resampled, sess.SourceLang())
