@@ -9,7 +9,7 @@ const InterimDebounce = 200 * time.Millisecond
 
 type PendingFinal struct {
 	ID   string
-	Data [][]float32
+	Data []float32
 }
 
 type ChannelState struct {

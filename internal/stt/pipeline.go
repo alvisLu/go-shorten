@@ -3,6 +3,7 @@ package stt
 import (
 	"context"
 	"log"
+	"math"
 	"time"
 
 	"github.com/alvisLu/go-shorten/internal/session"
@@ -50,7 +51,18 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 		if !sess.IsRunning() {
 			return
 		}
-		go p.transcribeInterim(sess, chName, id, flattenPCM(snapshot))
+		ch.Lock()
+		if ch.Processing || len(ch.StreamBuffer) == 0 {
+			ch.Unlock()
+			return
+		}
+		ch.Processing = true
+		ch.Unlock()
+		p.transcribeInterim(sess, chName, id, flattenPCM(snapshot))
+		ch.Lock()
+		ch.Processing = false
+		ch.Unlock()
+		p.runPendingFinal(sess, chName)
 	})
 	ch.Unlock()
 }
@@ -63,10 +75,9 @@ func (p *Pipeline) OnFinalFrame(sess *session.Session, chName, id string, pcm []
 		ch.InterimTimer.Stop()
 		ch.InterimTimer = nil
 	}
-	allChunks := append(ch.StreamBuffer, pcm)
 	ch.StreamBuffer = nil
 	ch.CurrentSegID = ""
-	pf := session.PendingFinal{ID: id, Data: allChunks}
+	pf := session.PendingFinal{ID: id, Data: pcm}
 	if ch.Processing {
 		ch.PendingFinals = append(ch.PendingFinals, pf)
 		ch.Unlock()
@@ -78,8 +89,8 @@ func (p *Pipeline) OnFinalFrame(sess *session.Session, chName, id string, pcm []
 }
 
 func (p *Pipeline) transcribeInterim(sess *session.Session, chName, id string, pcm []float32) {
-	log.Printf("transcribeInterim: ch=%s id=%s pcmLen=%d", chName, id, len(pcm))
-	if p.w == nil || len(pcm) == 0 {
+	log.Printf("transcribeInterim: ch=%s id=%s", chName, id)
+	if p.w == nil || rms(pcm) < 0.01 {
 		return
 	}
 	rate := sess.SampleRate()
@@ -95,19 +106,16 @@ func (p *Pipeline) transcribeInterim(sess *session.Session, chName, id string, p
 }
 
 func (p *Pipeline) transcribeSegment(sess *session.Session, chName string, pf session.PendingFinal) {
+	log.Printf("transcribeSegment: ch=%s id=%s", chName, pf.ID)
 	defer p.runPendingFinal(sess, chName)
-	if p.w == nil {
-		return
-	}
-	pcm := flattenPCM(pf.Data)
-	if len(pcm) == 0 {
+	if p.w == nil || rms(pf.Data) < 0.01 {
 		return
 	}
 	rate := sess.SampleRate()
 	if rate == 0 {
 		rate = 48000
 	}
-	resampled := whisper.Resample(pcm, rate)
+	resampled := whisper.Resample(pf.Data, rate)
 	text, err := p.w.Transcribe(resampled, sess.SourceLang())
 	if err != nil || text == "" {
 		return
@@ -127,6 +135,17 @@ func (p *Pipeline) runPendingFinal(sess *session.Session, chName string) {
 	ch.PendingFinals = ch.PendingFinals[1:]
 	ch.Unlock()
 	go p.transcribeSegment(sess, chName, next)
+}
+
+func rms(pcm []float32) float64 {
+	if len(pcm) == 0 {
+		return 0
+	}
+	var sum float64
+	for _, v := range pcm {
+		sum += float64(v) * float64(v)
+	}
+	return math.Sqrt(sum / float64(len(pcm)))
 }
 
 func flattenPCM(chunks [][]float32) []float32 {

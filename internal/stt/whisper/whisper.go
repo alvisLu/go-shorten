@@ -67,7 +67,7 @@ func (w *Whisper) Transcribe(pcm []float32, lang string) (string, error) {
 	}
 	text := strings.TrimSpace(sb.String())
 
-	log.Printf("whisper: transcribed text: %q\n", text)
+	log.Printf("transcribed text: %q\n", text)
 	return text, nil
 }
 
