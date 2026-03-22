@@ -1,7 +1,9 @@
 package whisper
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"sync"
@@ -61,10 +63,14 @@ func (w *Whisper) Transcribe(pcm []float32, lang string) (string, error) {
 	for {
 		seg, err := ctx.NextSegment()
 		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				return "", fmt.Errorf("whisper: next segment: %w", err)
+			}
 			break
 		}
 		sb.WriteString(seg.Text)
 	}
+
 	text := strings.TrimSpace(sb.String())
 
 	log.Printf("transcribed text: %q\n", text)
