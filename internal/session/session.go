@@ -47,6 +47,7 @@ func (s *Session) Start(sourceLang, targetLang string, sampleRate int) {
 	s.targetLang = targetLang
 	s.sampleRate = sampleRate
 	s.running = true
+	s.Send(WsResp{Status: "started"})
 }
 
 func (s *Session) Stop() {
@@ -56,6 +57,7 @@ func (s *Session) Stop() {
 	for _, ch := range s.channels {
 		ch.reset()
 	}
+	s.Send(WsResp{Status: "stopped"})
 }
 
 func (s *Session) IsRunning() bool {
@@ -66,4 +68,16 @@ func (s *Session) IsRunning() bool {
 
 func (s *Session) Channel(name string) *ChannelState {
 	return s.channels[name]
+}
+
+func (s *Session) SourceLang() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.sourceLang
+}
+
+func (s *Session) SampleRate() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.sampleRate
 }

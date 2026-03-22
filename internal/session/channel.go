@@ -16,6 +16,7 @@ type ChannelState struct {
 	mu            sync.Mutex
 	StreamBuffer  [][]float32
 	InterimTimer  *time.Timer
+	CurrentSegID  string
 	PendingFinals []PendingFinal
 	Processing    bool
 }
@@ -32,6 +33,7 @@ func (c *ChannelState) reset() {
 		c.InterimTimer = nil
 	}
 	c.StreamBuffer = nil
+	c.CurrentSegID = ""
 	c.PendingFinals = nil
 	c.Processing = false
 }

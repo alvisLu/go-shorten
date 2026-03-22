@@ -1,12 +1,17 @@
 package gateway
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"log"
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alvisLu/go-shorten/internal/config"
 	"github.com/alvisLu/go-shorten/internal/session"
+	"github.com/alvisLu/go-shorten/internal/stt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -58,14 +63,44 @@ func handleControl(sess *session.Session, raw []byte) {
 	}
 }
 
-func handleAudio(sess *session.Session, data []byte) {
-	// Phase 5: parse binary frame and dispatch to ChannelState
-	// [isFinal: 1 byte][channel: 1 byte][id: 21 bytes][PCM: N bytes Float32LE]
+func handleAudio(sess *session.Session, pipeline *stt.Pipeline, data []byte) {
+	const headerLen = 23
+	if !sess.IsRunning() || len(data) < headerLen {
+		return
+	}
+
+	isFinal := data[0] == 1
+	var chName string
+	switch data[1] {
+	case 0:
+		chName = "mic"
+	case 1:
+		chName = "loopback"
+	default:
+		return
+	}
+	id := strings.TrimRight(string(data[2:23]), "\x00")
+
+	pcmRaw := data[23:]
+	if len(pcmRaw)%4 != 0 {
+		return
+	}
+	pcm := make([]float32, len(pcmRaw)/4)
+	for i := range pcm {
+		bits := binary.LittleEndian.Uint32(pcmRaw[i*4:])
+		pcm[i] = math.Float32frombits(bits)
+	}
+
+	if isFinal {
+		pipeline.OnFinalFrame(sess, chName, id, pcm)
+	} else {
+		pipeline.OnInterimFrame(sess, chName, id, pcm)
+	}
 }
 
 // readPump reads messages from the client and dispatches them.
 // It also handles pong messages to reset the read deadline.
-func readPump(conn *websocket.Conn, sess *session.Session, done chan<- struct{}, quit <-chan struct{}) {
+func readPump(conn *websocket.Conn, sess *session.Session, pipeline *stt.Pipeline, done chan<- struct{}, quit <-chan struct{}) {
 	defer close(done)
 
 	conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -83,8 +118,9 @@ func readPump(conn *websocket.Conn, sess *session.Session, done chan<- struct{},
 
 		switch msgType {
 		case websocket.BinaryMessage:
-			go handleAudio(sess, data)
+			go handleAudio(sess, pipeline, data)
 		case websocket.TextMessage:
+			log.Printf("ws readPump: %s", data)
 			go handleControl(sess, data)
 		}
 	}
@@ -118,13 +154,14 @@ func writePump(conn *websocket.Conn, send <-chan any, done <-chan struct{}, quit
 	}
 }
 
-func wsHandler(upgrader websocket.Upgrader) gin.HandlerFunc {
+func wsHandler(upgrader websocket.Upgrader, pipeline *stt.Pipeline) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		log.Printf("ws connected: %s", conn.RemoteAddr())
 
 		send := make(chan any, 8)
 		done := make(chan struct{})
@@ -132,11 +169,11 @@ func wsHandler(upgrader websocket.Upgrader) gin.HandlerFunc {
 
 		sess := session.NewSession(send)
 
-		go readPump(conn, sess, done, quit)
+		go readPump(conn, sess, pipeline, done, quit)
 		writePump(conn, send, done, quit)
 	}
 }
 
-func registerWsRoutes(cfg *config.Config, r *gin.Engine) {
-	r.GET("/ws", wsHandler(newUpgrader(cfg)))
+func registerWsRoutes(cfg *config.Config, r *gin.Engine, pipeline *stt.Pipeline) {
+	r.GET("/ws", wsHandler(newUpgrader(cfg), pipeline))
 }
