@@ -119,10 +119,10 @@ func readPump(conn *websocket.Conn, sess *session.Session, pipeline *stt.Pipelin
 
 		switch msgType {
 		case websocket.BinaryMessage:
-			go handleAudio(sess, pipeline, data)
+			handleAudio(sess, pipeline, data)
 		case websocket.TextMessage:
 			log.Printf("ws readPump: %s", data)
-			go handleControl(sess, data)
+			handleControl(sess, data)
 		}
 	}
 }
