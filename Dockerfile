@@ -3,20 +3,22 @@ FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache ca-certificates gcc g++ musl-dev cmake make git
 
+WORKDIR /app
+
+# Copy go.mod to extract whisper.cpp commit hash
+COPY go.mod go.sum ./
+RUN go mod download
+
 # Clone whisper.cpp and build as static library
-RUN git clone https://github.com/ggerganov/whisper.cpp.git /whisper.cpp && \
-    cd /whisper.cpp && git checkout 9386f2394010 && \
+# Extract whisper.cpp commit hash from go.mod pseudo-version (e.g. v0.0.0-<timestamp>-<commit>)
+RUN WHISPER_COMMIT=$(grep 'ggerganov/whisper.cpp' go.mod | grep -oP '[a-f0-9]{12}$') && \
+    git clone https://github.com/ggerganov/whisper.cpp.git /whisper.cpp && \
+    cd /whisper.cpp && git checkout $WHISPER_COMMIT && \
     cmake -B build -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=OFF && \
     cmake --build build --config Release
 
 ENV CGO_CFLAGS="-I/whisper.cpp/include -I/whisper.cpp/ggml/include"
 ENV CGO_LDFLAGS="-L/whisper.cpp/build/src -L/whisper.cpp/build/ggml/src -lwhisper -lggml -lggml-base -lggml-cpu -lstdc++ -lm"
-
-WORKDIR /app
-
-# Copy go.mod / go.sum
-COPY go.mod go.sum ./
-RUN go mod download
 
 # Copy source code and compile statically
 COPY . .
