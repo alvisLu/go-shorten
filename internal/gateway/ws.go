@@ -50,6 +50,7 @@ type controlMsg struct {
 func handleControl(sess *session.Session, raw []byte) {
 	var msg controlMsg
 	if err := json.Unmarshal(raw, &msg); err != nil {
+		sess.Send(session.WsErrorResp{Error: "invalid JSON: " + err.Error()})
 		return
 	}
 	switch msg.Type {
