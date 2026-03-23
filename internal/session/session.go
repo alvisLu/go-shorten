@@ -49,7 +49,6 @@ func (s *Session) Start(sourceLang, targetLang string, sampleRate int, enableDen
 	s.sampleRate = sampleRate
 	s.enableDenoise = enableDenoise
 	s.isRunning = true
-	s.Send(WsResp{Status: "started"})
 }
 
 func (s *Session) Stop() {
@@ -59,7 +58,6 @@ func (s *Session) Stop() {
 	for _, ch := range s.channels {
 		ch.reset()
 	}
-	s.Send(WsResp{Status: "stopped"})
 }
 
 func (s *Session) IsRunning() bool {

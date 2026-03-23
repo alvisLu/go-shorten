@@ -55,8 +55,10 @@ func handleControl(sess *session.Session, raw []byte) {
 	switch msg.Type {
 	case "start":
 		sess.Start(msg.SourceLang, msg.TargetLang, msg.SampleRate, msg.EnableDenoise)
+		sess.Send(session.WsResp{Status: "started"})
 	case "stop":
 		sess.Stop()
+		sess.Send(session.WsResp{Status: "stopped"})
 	case "health":
 		sess.Health()
 	default:
