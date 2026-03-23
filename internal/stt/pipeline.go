@@ -49,12 +49,13 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 	if ch.InterimTimer != nil {
 		ch.InterimTimer.Stop()
 	}
+	capturedEpoch := ch.Epoch()
 	ch.InterimTimer = time.AfterFunc(session.InterimDebounce, func() {
 		if !sess.IsRunning() {
 			return
 		}
 		ch.Lock()
-		if ch.Processing || len(ch.StreamBuffer) == 0 {
+		if ch.Epoch() != capturedEpoch || ch.Processing || len(ch.StreamBuffer) == 0 {
 			ch.Unlock()
 			return
 		}
