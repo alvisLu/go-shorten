@@ -3,6 +3,7 @@ package gateway
 import (
 	"cmp"
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -42,16 +43,25 @@ func (s *Server) ListenAndServe() error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
+	errCh := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("server error: %v", err)
+			errCh <- err
 		}
 	}()
 
-	<-quit
+	select {
+	case err := <-errCh:
+		return err
+	case <-quit:
+	}
+
 	log.Println("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return srv.Shutdown(ctx)
+	if err := srv.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return nil
 }
