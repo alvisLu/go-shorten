@@ -43,6 +43,7 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 	ch.Lock()
 	ch.StreamBuffer = append(ch.StreamBuffer, pcm)
 	ch.CurrentSegID = id
+
 	// take snapshot for the closure (copy slice headers; float32 data owned by pcm arg)
 	snapshot := make([][]float32, len(ch.StreamBuffer))
 	copy(snapshot, ch.StreamBuffer)
@@ -50,22 +51,23 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 		ch.InterimTimer.Stop()
 	}
 	capturedEpoch := ch.Epoch()
-	ch.InterimTimer = time.AfterFunc(session.InterimDebounce, func() {
+	var t *time.Timer
+	t = time.AfterFunc(session.InterimDebounce, func() {
 		if !sess.IsRunning() {
 			return
 		}
 		ch.Lock()
-		if ch.Epoch() != capturedEpoch || ch.Processing || len(ch.StreamBuffer) == 0 {
+		if t != ch.InterimTimer || ch.Epoch() != capturedEpoch || ch.Processing || len(ch.StreamBuffer) == 0 {
 			ch.Unlock()
 			return
 		}
-
 		currentId := ch.CurrentSegID
 		ch.Processing = true
 		ch.Unlock()
 		p.transcribeInterim(sess, chName, currentId, flattenPCM(snapshot))
 		p.runPendingFinal(sess, chName)
 	})
+	ch.InterimTimer = t
 	ch.Unlock()
 }
 
@@ -156,6 +158,15 @@ func (p *Pipeline) runPendingFinal(sess *session.Session, chName string) {
 	ch := sess.Channel(chName)
 	ch.Lock()
 	if len(ch.PendingFinals) == 0 {
+		if len(ch.StreamBuffer) > 0 {
+			snapshot := make([][]float32, len(ch.StreamBuffer))
+			copy(snapshot, ch.StreamBuffer)
+			currentID := ch.CurrentSegID
+			ch.Processing = false
+			ch.Unlock()
+			p.transcribeInterim(sess, chName, currentID, flattenPCM(snapshot))
+			return
+		}
 		ch.Processing = false
 		ch.Unlock()
 		return
