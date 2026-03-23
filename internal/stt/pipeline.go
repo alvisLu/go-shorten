@@ -64,10 +64,6 @@ func (p *Pipeline) OnInterimFrame(sess *session.Session, chName, id string, pcm 
 		ch.Processing = true
 		ch.Unlock()
 		p.transcribeInterim(sess, chName, currentId, flattenPCM(snapshot))
-		ch.Lock()
-
-		ch.Processing = false
-		ch.Unlock()
 		p.runPendingFinal(sess, chName)
 	})
 	ch.Unlock()
@@ -166,6 +162,7 @@ func (p *Pipeline) runPendingFinal(sess *session.Session, chName string) {
 	}
 	next := ch.PendingFinals[0]
 	ch.PendingFinals = ch.PendingFinals[1:]
+	ch.Processing = true
 	ch.Unlock()
 	go p.transcribeSegment(sess, chName, next)
 }
