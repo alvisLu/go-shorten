@@ -11,7 +11,7 @@ RUN go mod download
 
 # Clone whisper.cpp and build as static library
 # Extract whisper.cpp commit hash from go.mod pseudo-version (e.g. v0.0.0-<timestamp>-<commit>)
-RUN WHISPER_COMMIT=$(grep 'ggerganov/whisper.cpp' go.mod | grep -oP '[a-f0-9]{12}$') && \
+RUN WHISPER_COMMIT=$(grep 'ggerganov/whisper.cpp' go.mod | awk '{print $2}' | awk -F'-' '{print $NF}') && \
     git clone https://github.com/ggerganov/whisper.cpp.git /whisper.cpp && \
     cd /whisper.cpp && git checkout $WHISPER_COMMIT && \
     cmake -B build -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=OFF && \

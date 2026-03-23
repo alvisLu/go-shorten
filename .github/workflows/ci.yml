@@ -37,7 +37,7 @@ jobs:
         if: steps.whisper-cache.outputs.cache-hit != 'true'
         run: |
           # Extract whisper.cpp commit hash from go.mod pseudo-version (e.g. v0.0.0-<timestamp>-<commit>)
-          WHISPER_COMMIT=$(grep 'ggerganov/whisper.cpp' go.mod | grep -oP '[a-f0-9]{12}$') 
+          WHISPER_COMMIT=$(grep 'ggerganov/whisper.cpp' go.mod | awk '{print $2}' | grep -oP '[a-f0-9]{12}$')
           git clone https://github.com/ggml-org/whisper.cpp.git /tmp/whisper-src
           git -C /tmp/whisper-src checkout $WHISPER_COMMIT
           cmake -B /tmp/whisper-build /tmp/whisper-src \
