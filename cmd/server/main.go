@@ -24,6 +24,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to load whisper model: %v", err)
 		}
+		defer w.Close()
 		pipeline = stt.NewPipeline(w, nil)
 	} else {
 		log.Println("WHISPER_MODEL_PATH not set, STT disabled")
