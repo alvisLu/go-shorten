@@ -23,11 +23,42 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Install build dependencies
+        run: sudo apt-get install -y cmake build-essential
+
+      - name: Cache whisper.cpp
+        uses: actions/cache@v4
+        id: whisper-cache
+        with:
+          path: /tmp/whisper-install
+          key: whisper-cpp-${{ runner.os }}-${{ hashFiles('go.sum') }}
+
+      - name: Build and install whisper.cpp
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
+        run: |
+          # Extract whisper.cpp commit hash from go.mod pseudo-version (e.g. v0.0.0-<timestamp>-<commit>)
+          WHISPER_COMMIT=$(grep 'ggerganov/whisper.cpp' go.mod | awk '{print $2}' | grep -oP '[a-f0-9]{12}$')
+          git clone https://github.com/ggml-org/whisper.cpp.git /tmp/whisper-src
+          git -C /tmp/whisper-src checkout $WHISPER_COMMIT
+          cmake -B /tmp/whisper-build /tmp/whisper-src \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_INSTALL_PREFIX=/tmp/whisper-install
+          cmake --build /tmp/whisper-build --config Release -j$(nproc)
+          cmake --install /tmp/whisper-build
+
       - name: Run go vet
         run: go vet ./...
+        env:
+          CGO_CFLAGS: '-I/tmp/whisper-install/include'
+          CGO_LDFLAGS: '-L/tmp/whisper-install/lib'
+          LD_LIBRARY_PATH: '/tmp/whisper-install/lib'
 
       - name: Run tests
         run: go test ./... -v -race
+        env:
+          CGO_CFLAGS: '-I/tmp/whisper-install/include'
+          CGO_LDFLAGS: '-L/tmp/whisper-install/lib'
+          LD_LIBRARY_PATH: '/tmp/whisper-install/lib'
 
   build:
     name: Verify Docker image builds

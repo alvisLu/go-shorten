@@ -18,6 +18,7 @@ require (
 	github.com/elastic/go-sysinfo v1.15.4 // indirect
 	github.com/elastic/go-windows v1.0.2 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
+	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-20260319084013-9386f2394010 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/gin-gonic/gin v1.12.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect

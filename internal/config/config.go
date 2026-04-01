@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	HOST           string
-	PORT           string
-	GIN_MODE       string
-	DatabaseURL    string
-	AllowedOrigins []string
+	HOST             string
+	PORT             string
+	GIN_MODE         string
+	DatabaseURL      string
+	AllowedOrigins   []string
+	WhisperModelPath string
 }
 
 func LoadConfig() *Config {
@@ -24,11 +25,12 @@ func LoadConfig() *Config {
 	}
 
 	cfg := &Config{
-		HOST:           os.Getenv("HOST"),
-		PORT:           os.Getenv("PORT"),
-		GIN_MODE:       os.Getenv("GIN_MODE"),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		AllowedOrigins: allowedOrigins,
+		HOST:             os.Getenv("HOST"),
+		PORT:             os.Getenv("PORT"),
+		GIN_MODE:         os.Getenv("GIN_MODE"),
+		DatabaseURL:      os.Getenv("DATABASE_URL"),
+		AllowedOrigins:   allowedOrigins,
+		WhisperModelPath: os.Getenv("WHISPER_MODEL_PATH"),
 	}
 
 	if cfg.DatabaseURL == "" {

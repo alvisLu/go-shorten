@@ -2,8 +2,17 @@ package gateway
 
 import (
 	"cmp"
+	"context"
+	"errors"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/alvisLu/go-shorten/internal/config"
+	"github.com/alvisLu/go-shorten/internal/stt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -13,18 +22,46 @@ type Server struct {
 	cfg    *config.Config
 }
 
-func NewHttpServer(cfg *config.Config, db *gorm.DB) *Server {
+func NewHttpServer(cfg *config.Config, db *gorm.DB, pipeline *stt.Pipeline) *Server {
 	mode := cmp.Or(cfg.GIN_MODE, gin.DebugMode)
 	gin.SetMode(mode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.SetTrustedProxies(nil)
 
-	registerRoutes(cfg, db, r)
+	registerRoutes(cfg, db, r, pipeline)
 
 	return &Server{router: r, cfg: cfg}
 }
 
 func (s *Server) ListenAndServe() error {
-	return s.router.Run(s.cfg.HOST + ":" + s.cfg.PORT)
+	srv := &http.Server{
+		Addr:    s.cfg.HOST + ":" + s.cfg.PORT,
+		Handler: s.router,
+	}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-quit:
+	}
+
+	log.Println("shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return nil
 }
